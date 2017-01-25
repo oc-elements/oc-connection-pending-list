@@ -10,33 +10,21 @@
 <link rel="import" href="../oc-core-utils/oc-api-consumer-behaviour.html">
 
 <!--
-`oc-connection-active-list`
-Element to display list of active connections for an organisation on the Ordercloud platform
+`oc-connection-pending-list`
+Element to manage an orgisation&#39;s pending connections on the Ordercloud platform
 
 @demo demo/index.html
 -->
 
-<dom-module id="oc-connection-active-list">
+<dom-module id="oc-connection-pending-list">
   <template>
     <style>
       :host {
         display: block;
-        padding:10px;
-      }
-
-      paper-material {
-        background: #fff;
-        padding: 10px;
-      }
-
-      iron-data-table {
-        font-size: 14px;
       }
     </style>
 
     <oc-connection-api id="connectionApi"></oc-connection-api>
-
-    <paper-button title="manage" on-tap="_newConnection" raised>New Connection</paper-button>
 
     <oc-grid-controls data="[[ _pendingConnections ]]" total-count="[[ _totalItems ]]" num-entries="[[ _pageSize ]]">
       <iron-data-table
@@ -49,14 +37,15 @@ Element to display list of active connections for an organisation on the Ordercl
         <data-table-column name="Name" sort-by="name" width="200px">
           <template>[[_computeName( item.toOrganisation, item.fromOrganisation)]]</template>
         </data-table-column>
-        <data-table-column name="Fee" sort-by="fee">
-          <template>[[_computeFees(item.fee)]]</template>
-        </data-table-column>
-        <data-table-column name="Organisation Type" sort-by="orgType" width="400px">
+
+        <template is="dom-if" if="[[_isCurrentOrg(pendingType)]]">
+          <data-table-column name="Fee" sort-by="fee">
+            <template>[[_computeFees(item.fee)]]</template>
+          </data-table-column>
+        </template>
+
+        <data-table-column name="Connection Status" sort-by="orgType">
           <template>[[_computeOrgTypes(item.toOrganisation, item.fromOrganisation)]]</template>
-        </data-table-column>
-        <data-table-column name="Connection Types" sort-by="connectionType">
-          <template>[[item.type.name]]</template>
         </data-table-column>
 
         <data-table-column name="Actions">
@@ -74,17 +63,18 @@ Element to display list of active connections for an organisation on the Ordercl
   <script>
     Polymer({
 
-      is: 'oc-connection-active-list',
+      is: 'oc-connection-pending-list',
       behaviors: [OC.Behaviours.ApiConsumer],
 
       properties: {
         organisationId: Number,
+        pendingType: String,
         loading: {
           type: Boolean,
           notify: true
         },
 
-        _activeConnections : Array,
+        _pendingConnections : Array,
         _totalItems: Number,
         _pageSize: Number,
         _currentPage: Number
@@ -101,84 +91,13 @@ Element to display list of active connections for an organisation on the Ordercl
 
         this.loading = true;
 
-        this._getActiveConnections(this.organisationId, 1, 10);
+//        this._getActiveConnections(this.organisationId, 1, 10);
 
       },
 
-      _getActiveConnections : function(orgId, page, pageSize){
-
-        var criteria = {};
-        criteria.page = page || 1;
-        criteria.pageSize = pageSize || 10;
-        criteria.statuses = ["CONNECTED"];
-
-        this.$.connectionApi.getConnections(orgId, criteria)
-                .then(function(request){
-                  this._activeConnections = request.response.results;
-                  this._totalItems = request.response.count;
-                  this._pageSize = pageSize;
-                  this._currentPage = page;
-
-                  console.log(this._activeConnections)
-
-                }.bind(this))
-                .catch(this.fire.bind(this, 'delivery-agents-error', 'Failed to load delivery agents'))
-                .finally(this.set.bind(this, 'loading', false));
-      },
-
-      _newConnection : function(e){
-        this.fire('oc-page-to', '/new/');
-      },
-
-      _computeOrg : function(toOrg, fromOrg) {
-        var toOrgId = toOrg.id;
-        return (this.organisationId !== toOrgId) ? toOrg : fromOrg;
-      },
-
-      _computeName : function(toOrg, fromOrg){
-        var org = this._computeOrg(toOrg, fromOrg);
-
-        return org.name;
-      },
-
-      _computeId : function(toOrg, fromOrg){
-        var org = this._computeOrg(toOrg, fromOrg);
-        return org.id;
-      },
-
-      _computeOrgTypes : function(toOrg, fromOrg) {
-        var org = this._computeOrg(toOrg, fromOrg),
-                orgTypes = [];
-
-        orgTypes = org.types.map(function(obj){return obj.name});
-
-        return orgTypes.join(', ');
-
-      },
-
-      _computeFees : function(fee){
-
-        if (!fee) return;
-
-        var feeList = [];
-
-        if (Array.isArray(fee) && fee.length) {
-          feeList = fee.map(function(obj){return obj.type.name});
-        }
-
-        return (feeList.length) ? feeList.join(', ') : 'No Fees';
-      },
-
-      _manageConnection : function(e){
-        this.fire('oc-page-to', '/manage/' + event.model.item.id);
-      },
-
-      _actionHandler: function(e) {
-        var extraObj = JSON.parse(Polymer.dom(event).localTarget.parentElement.getAttribute('data-option-object')),
-                action = e.target.getAttribute('id');
-        this.fire(action, extraObj);
-      },
-
+      _isCurrentOrg: function(orgType){
+        return (orgtype === "otherOrginisations")
+      }
 
     });
   </script>
